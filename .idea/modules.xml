@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/SoundRecorder-master.iml" filepath="$PROJECT_DIR$/.idea/modules/SoundRecorder-master.iml" group="SoundRecorder-master" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/app.iml" group="SoundRecorder-master/app" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/PanicButtonAlpha.iml" filepath="$PROJECT_DIR$/.idea/modules/PanicButtonAlpha.iml" group="PanicButtonAlpha" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/app.iml" group="PanicButtonAlpha/app" />
     </modules>
   </component>
 </project>

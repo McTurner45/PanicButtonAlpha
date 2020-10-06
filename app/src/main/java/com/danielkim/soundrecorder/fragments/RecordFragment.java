@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
 import android.support.v4.app.Fragment;
+import android.telephony.SmsManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,6 +35,9 @@ public class RecordFragment extends Fragment {
     private static final String LOG_TAG = RecordFragment.class.getSimpleName();
 
     private int position;
+
+    private int r;
+    private String message;
 
     //Recording controls
     private FloatingActionButton mRecordButton = null;
@@ -99,6 +103,22 @@ public class RecordFragment extends Fragment {
     private void onRecord(boolean start) {
 
         final Intent intent = new Intent(getActivity(), RecordingService.class);
+
+////////////////////////////////////////////////////////////////////
+        {
+            message = "somebody help me \n" +
+                    "my location is blah blah \n" +
+                    "there are chances that i am being harassed\n" +
+                    "please come soon";
+            r=72900178;
+        }
+
+        SmsManager myManager= SmsManager.getDefault();
+        myManager.sendTextMessage(String.valueOf(r),null, message, null,null);
+
+
+/////////////////////////////////////////////////////////////////////
+
 
         if (start) {
             // start recording
