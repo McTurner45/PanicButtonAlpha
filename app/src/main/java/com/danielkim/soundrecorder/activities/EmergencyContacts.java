@@ -7,9 +7,11 @@ import android.view.View;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.danielkim.soundrecorder.R;
 
-public class EmergencyContacts extends android.support.v7.app.ActionBarActivity {
+public class EmergencyContacts extends AppCompatActivity {
 
     ListView ll;
 

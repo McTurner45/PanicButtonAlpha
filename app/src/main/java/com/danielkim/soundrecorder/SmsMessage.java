@@ -6,9 +6,11 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.PersistableBundle;
-import android.support.annotation.Nullable;
 import android.telephony.SmsManager;
 import android.widget.Button;
+
+import androidx.annotation.Nullable;
+
 import com.danielkim.soundrecorder.activities.MainActivity;
 
 public class SmsMessage extends MainActivity implements LocationListener {

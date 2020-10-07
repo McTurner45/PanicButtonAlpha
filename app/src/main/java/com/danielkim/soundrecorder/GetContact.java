@@ -6,12 +6,13 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.PersistableBundle;
 import android.provider.ContactsContract;
-import android.support.annotation.Nullable;
-import android.support.v7.app.ActionBarActivity;
 import android.view.View;
 import android.widget.Toast;
 
-public class GetContact extends ActionBarActivity {
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class GetContact extends AppCompatActivity {
 
     public GetContact() {
 
@@ -37,7 +38,7 @@ public class GetContact extends ActionBarActivity {
 
         if (reqCode == PICK_CONCTACT) {
 
-            if (resultCode == ActionBarActivity.RESULT_OK) {
+            if (resultCode == AppCompatActivity.RESULT_OK) {
                 Uri contactData = data.getData();
                 Cursor c = getContentResolver().query(contactData, null, null, null, null);
 
