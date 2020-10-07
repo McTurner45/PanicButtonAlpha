@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "391242665095",
+    "firebase_url": "https://panic-button-90551.firebaseio.com",
+    "project_id": "panic-button-90551",
+    "storage_bucket": "panic-button-90551.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:391242665095:android:461775d939cf21ef567c22",
+        "android_client_info": {
+          "package_name": "com.danielkim.soundrecorder"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "391242665095-p2idv5qra99998rsqmd7ea0h2re377es.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoI-gbtYha0T3Q95EvZ0AGrCYS7AXCNOw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "391242665095-p2idv5qra99998rsqmd7ea0h2re377es.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

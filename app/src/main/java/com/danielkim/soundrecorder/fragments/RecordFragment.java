@@ -1,50 +1,65 @@
 package com.danielkim.soundrecorder.fragments;
 
 import android.Manifest;
-import android.app.AlertDialog;
 import android.app.Fragment;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.telephony.SmsManager;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Chronometer;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.danielkim.soundrecorder.Model.Comment;
+import com.danielkim.soundrecorder.Model.LocationModel;
 import com.danielkim.soundrecorder.R;
 import com.danielkim.soundrecorder.RecordingService;
 import com.danielkim.soundrecorder.SmsMessage;
-import com.danielkim.soundrecorder.activities.MainActivity;
 import com.danielkim.soundrecorder.adapters.CommentsAdapter;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.melnykov.fab.FloatingActionButton;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.Executor;
 
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.tasks.OnSuccessListener;
+import static android.content.Context.LOCATION_SERVICE;
+import static androidx.core.content.ContextCompat.getSystemService;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -65,7 +80,7 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
 
     //Recording controls
     private FloatingActionButton mRecordButton = null;
-    private Button mPauseButton = null;
+    private Button mSend;
 
     private TextView mRecordingPrompt;
     private int mRecordPromptCount = 0;
@@ -85,7 +100,15 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
     private static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1;
     private FusedLocationProviderClient mFusedLocationClient;
 
-    TextView lang,lat;
+    TextView lang, lat;
+
+    private LocationManager locationManager;
+    private LocationListener listener;
+
+    FirebaseDatabase firebaseDatabase;
+    DatabaseReference reference;
+
+    EditText commentText;
 
     /**
      * Use this factory method to create a new instance of
@@ -117,6 +140,10 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View recordView = inflater.inflate(R.layout.fragment_record, container, false);
+        lang = recordView.findViewById(R.id.lang);
+        lat = recordView.findViewById(R.id.lat);
+        mSend = recordView.findViewById(R.id.comment);
+        commentText = recordView.findViewById(R.id.comment_text);
 
         mChronometer = (Chronometer) recordView.findViewById(R.id.chronometer);
         //update recording prompt text
@@ -125,15 +152,45 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
         mRecordButton = (FloatingActionButton) recordView.findViewById(R.id.btnRecord);
         mRecordButton.setColorNormal(getResources().getColor(R.color.primary));
         mRecordButton.setColorPressed(getResources().getColor(R.color.primary_dark));
-        lang= recordView.findViewById(R.id.lang);
-        lat=recordView.findViewById(R.id.lat);
+
+
+        firebaseDatabase = FirebaseDatabase.getInstance();
+        reference = firebaseDatabase.getReference("Clients");
+
+        locationManager = (LocationManager) getContext().getSystemService(Context.LOCATION_SERVICE);
+
+
+        listener = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                lang.append(String.valueOf(location.getLongitude()));
+                lat.append(String.valueOf(location.getLatitude()));
+            }
+
+            @Override
+            public void onStatusChanged(String s, int i, Bundle bundle) {
+
+            }
+
+            @Override
+            public void onProviderEnabled(String s) {
+
+            }
+
+            @Override
+            public void onProviderDisabled(String s) {
+
+                Intent i = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                startActivity(i);
+            }
+        };
 
         commentsList = (RecyclerView) recordView.findViewById(R.id.comments_list);
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(Objects.requireNonNull(getActivity()));
 
         final LinearLayoutManager layoutManager = new LinearLayoutManager(getActivity());
         layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
-        commentsList.hasFixedSize();
+        commentsList.setHasFixedSize(true);
         commentsList.setLayoutManager(layoutManager);
         commentArrayList = new ArrayList<>();
 
@@ -153,20 +210,50 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
 
         final Intent intent = new Intent(getActivity(), RecordingService.class);
 
-        ////////////////////////////////////////////////////////////////////
-        {
-            message = "somebody help me \n" +
-                    "my location is " + lat.getText() + "\tlatittude and "
-                    + lang.getText() + "\tlongitude \n" +
-                    "there are chances that i am being harassed\n" +
-                    "please come soon";
-            r = 72900178;
+        if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getActivity(),
+                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,
+                                Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET}
+                        , 10);
+            }
+            return;
         }
+        locationManager.requestLocationUpdates("gps", 5000, 0, listener);
 
-        SmsManager myManager = SmsManager.getDefault();
-        myManager.sendTextMessage(String.valueOf(r), null, message, null, null);
-        /////////////////////////////////////////////////////////////////////
+        fetchLocation();
 
+        reference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
+                    LocationModel locationModel = dataSnapshot.getValue(LocationModel.class);
+
+                    lang.setText(locationModel.getLang());
+                    lat.setText(locationModel.getLat());
+                }
+
+                    message = "somebody help me \n" +
+                            "my location is " + lat.getText() + "\t latittude and "
+                            + lang.getText() + "\tlongitude \n" +
+                            "there are chances that i am being harassed\n" +
+                            "please come soon";
+                    r = 77100822;
+
+                    Toast.makeText(getActivity(), message, Toast.LENGTH_LONG).show();
+
+                    SmsManager myManager = SmsManager.getDefault();
+                    myManager.sendTextMessage(String.valueOf(r), null, message, null, null);
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
 
         if (start) {
             // start recording
@@ -261,73 +348,55 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
         commentsList.setAdapter(commentsAdapter);
         commentsList.setVisibility(View.VISIBLE);
 
+        mSend.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (!TextUtils.isEmpty(commentText.getText())) {
+                    commentText.getText();
+
+                    Comment comment4 = new Comment("Me", "7109320982", commentText.getText().toString());
+
+                    commentArrayList.add(comment4);
+
+                    commentText.setText("");
+
+                }
+            }
+        });
+
     }
 
     private void fetchLocation() {
-
-        if (ContextCompat.checkSelfPermission(getActivity(),
-                Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-
-
-            // Permission is not granted
-            // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(),
-                    Manifest.permission.ACCESS_COARSE_LOCATION)) {
-                // Show an explanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
-
-                new AlertDialog.Builder(getActivity())
-                        .setTitle("Required Location Permission")
-                        .setMessage("You have to give this permission to acess this feature")
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                ActivityCompat.requestPermissions(getActivity(),
-                                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                                        MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
-                            }
-                        })
-                        .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                dialogInterface.dismiss();
-                            }
-                        })
-                        .create()
-                        .show();
+        if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
+                @Override
+                public void onComplete(@NonNull Task<Location> task) {
+                    Location location = task.getResult();
+                    if (location != null) {
+                        try {
+                            Geocoder geocoder = new Geocoder(getContext(), Locale.getDefault());
 
 
-            } else {
-                // No explanation needed; request the permission
-                ActivityCompat.requestPermissions(getActivity(),
-                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                        MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
+                            List<Address> addresses = geocoder.getFromLocation(
+                                    location.getLatitude(), location.getLongitude(), 1);
 
-                // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
-                // app-defined int constant. The callback method gets the
-                // result of the request.
-            }
-        } else {
-            // Permission has already been granted
-            mFusedLocationClient.getLastLocation()
-                    .addOnSuccessListener( getActivity(), new OnSuccessListener<Location>() {
-                        @Override
-                        public void onSuccess(Location location) {
-                            // Got last known location. In some rare situations this can be null.
-                            if (location != null) {
-                                // Logic to handle location object
-                                Double latittude = location.getLatitude();
-                                Double longitude = location.getLongitude();
+                            LocationModel locationModel = new LocationModel(String.valueOf(location.getLatitude()),
+                                    String.valueOf(location.getLongitude()), "77782678612836821"
+                            );
 
-                                lat.setText(latittude.toString());
-                                lang.setText(longitude.toString());
+                            reference.push().setValue(locationModel);
 
-                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
-                    });
+                    }
+                }
+            });
 
+        } else {
+            ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
         }
 
     }
@@ -343,9 +412,4 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
         }
     }
 
-    @Override
-    public void onStart() {
-        fetchLocation();
-        super.onStart();
-    }
 }
