@@ -8,6 +8,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
@@ -22,6 +23,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -37,6 +39,7 @@ import com.melnykov.fab.FloatingActionButton;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -82,6 +85,8 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
     private static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1;
     private FusedLocationProviderClient mFusedLocationClient;
 
+    TextView lang,lat;
+
     /**
      * Use this factory method to create a new instance of
      * this fragment using the provided parameters.
@@ -107,6 +112,7 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -119,8 +125,11 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
         mRecordButton = (FloatingActionButton) recordView.findViewById(R.id.btnRecord);
         mRecordButton.setColorNormal(getResources().getColor(R.color.primary));
         mRecordButton.setColorPressed(getResources().getColor(R.color.primary_dark));
+        lang= recordView.findViewById(R.id.lang);
+        lat=recordView.findViewById(R.id.lat);
 
         commentsList = (RecyclerView) recordView.findViewById(R.id.comments_list);
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(Objects.requireNonNull(getActivity()));
 
         final LinearLayoutManager layoutManager = new LinearLayoutManager(getActivity());
         layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
@@ -131,7 +140,9 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
         SmsMessage smsMessage = new SmsMessage();
 
         onRecord(mStartRecording);
+
         mStartRecording = !mStartRecording;
+
 
         return recordView;
     }
@@ -142,7 +153,20 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
 
         final Intent intent = new Intent(getActivity(), RecordingService.class);
 
-        //fetchLocation();
+        ////////////////////////////////////////////////////////////////////
+        {
+            message = "somebody help me \n" +
+                    "my location is " + lat.getText() + "\tlatittude and "
+                    + lang.getText() + "\tlongitude \n" +
+                    "there are chances that i am being harassed\n" +
+                    "please come soon";
+            r = 72900178;
+        }
+
+        SmsManager myManager = SmsManager.getDefault();
+        myManager.sendTextMessage(String.valueOf(r), null, message, null, null);
+        /////////////////////////////////////////////////////////////////////
+
 
         if (start) {
             // start recording
@@ -203,7 +227,7 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
                 }
             });
 
-            //getComments();
+            getComments();
 
         } else {
 
@@ -288,7 +312,7 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
         } else {
             // Permission has already been granted
             mFusedLocationClient.getLastLocation()
-                    .addOnSuccessListener((Executor) this, new OnSuccessListener<Location>() {
+                    .addOnSuccessListener( getActivity(), new OnSuccessListener<Location>() {
                         @Override
                         public void onSuccess(Location location) {
                             // Got last known location. In some rare situations this can be null.
@@ -296,19 +320,9 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
                                 // Logic to handle location object
                                 Double latittude = location.getLatitude();
                                 Double longitude = location.getLongitude();
-                                ////////////////////////////////////////////////////////////////////
-                                {
-                                    message = "somebody help me \n" +
-                                            "my location is " + latittude + "\tlatittude and "
-                                            + longitude + "\tlongitude \n" +
-                                            "there are chances that i am being harassed\n" +
-                                            "please come soon";
-                                    r = 72900178;
-                                }
 
-                                SmsManager myManager = SmsManager.getDefault();
-                                myManager.sendTextMessage(String.valueOf(r), null, message, null, null);
-                                /////////////////////////////////////////////////////////////////////
+                                lat.setText(latittude.toString());
+                                lang.setText(longitude.toString());
 
                             }
                         }
@@ -329,4 +343,9 @@ public class RecordFragment extends androidx.fragment.app.Fragment {
         }
     }
 
+    @Override
+    public void onStart() {
+        fetchLocation();
+        super.onStart();
+    }
 }
